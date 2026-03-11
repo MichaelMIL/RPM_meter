@@ -1,51 +1,85 @@
 | Supported Targets | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-C5 | ESP32-C6 | ESP32-C61 | ESP32-H2 | ESP32-H21 | ESP32-P4 | ESP32-S2 | ESP32-S3 |
 | ----------------- | ----- | -------- | -------- | -------- | -------- | --------- | -------- | --------- | -------- | -------- | -------- |
 
-# Basic I2C Master Example
-
-(See the README.md file in the upper level 'examples' directory for more information about examples.)
+# Hall Sensor RPM Meter Example
 
 ## Overview
 
-This example demonstrates basic usage of I2C driver by reading and writing from a I2C connected sensor:
+This example implements an RPM meter using a digital-output Hall-effect sensor.
+It measures the time between rising edges on the sensor output, averages several
+recent periods, and converts that to revolutions per minute (RPM). The current
+RPM and related statistics are printed to the log whenever they change or at a
+fixed interval.
 
-If you have a new I2C application to go (for example, read the temperature data from external sensor with I2C interface), try this as a basic template, then add your own code.
+Use this as a starting point for any project where you need to measure shaft
+speed with a magnet and Hall sensor (for example, fans, wheels, or motors).
 
-## How to use example
+## Hardware Required
 
-### Hardware Required
+- **ESP32 development board**: Any board based on a supported target.
+- **Digital Hall-effect sensor**: With open-collector or push-pull digital output.
+- **Magnet**: Mounted on the rotating object.
+- **Wiring / breadboard** as needed.
 
-To run this example, you should have an Espressif development board based on a chip listed in supported targets as well as a MPU9250. MPU9250 is a inertial measurement unit, which contains a accelerometer, gyroscope as well as a magnetometer, for more information about it, you can read the [datasheet of the MPU9250 sensor](https://invensense.tdk.com/wp-content/uploads/2015/02/PS-MPU-9250A-01-v1.1.pdf).
+## Pin Assignment
 
-#### Pin Assignment
+By default, the example expects the Hall sensor digital output to be connected
+to GPIO `4`:
 
-**Note:** The following pin assignments are used by default, you can change these in the `menuconfig` .
+| Signal                | ESP GPIO | Notes                         |
+| --------------------- | -------- | ----------------------------- |
+| Hall sensor output    | GPIO 4   | Configured as interrupt input |
+| Hall sensor VCC       | 3V3/5V   | According to sensor specs     |
+| Hall sensor GND       | GND      | Common ground with ESP        |
 
-|                  | SDA             | SCL           |
-| ---------------- | -------------- | -------------- |
-| ESP I2C Master   | I2C_MASTER_SDA | I2C_MASTER_SCL |
-| MPU9250 Sensor   | SDA            | SCL            |
+You can change the GPIO by editing `HALL_DIGITAL_GPIO` in `main/i2c_basic_example_main.c`
+and rebuilding the project.
 
-For the actual default value of `I2C_MASTER_SDA` and `I2C_MASTER_SCL` see `Example Configuration` in `menuconfig`.
+## Configuration
 
-**Note:** There's no need to add an external pull-up resistors for SDA/SCL pin, because the driver will enable the internal pull-up resistors.
+The behavior of the RPM meter can be tuned via the following defines in
+`main/i2c_basic_example_main.c`:
 
-### Build and Flash
+- **`RPM_DISPLAY_INTERVAL_MS`**: Minimum time between log prints.
+- **`RPM_MIN_PERIOD_MS` / `RPM_MAX_PERIOD_MS`**: Valid period range used to
+  filter out noise and unrealistic measurements.
+- **`RPM_AVERAGE_COUNT`**: Number of recent periods to average when computing RPM.
 
-Enter `idf.py -p PORT flash monitor` to build, flash and monitor the project.
+## Build and Flash
 
-(To exit the serial monitor, type ``Ctrl-]``.)
+1. **Set up ESP-IDF** following the official Getting Started guide.
+2. In the project directory, run:
 
-See the [Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html) for full steps to configure and use ESP-IDF to build projects.
+   ```bash
+   idf.py set-target esp32   # or your specific target
+   idf.py -p PORT flash monitor
+   ```
+
+3. Replace `PORT` with the serial port of your board.
+
+To exit the monitor, press `Ctrl+]`.
 
 ## Example Output
 
+Typical log output (tag `rpm_meter`) might look like:
+
 ```bash
-I (328) example: I2C initialized successfully
-I (338) example: WHO_AM_I = 71
-I (338) example: I2C de-initialized successfully
+I (123) rpm_meter: GPIO interrupt initialized successfully (pin 4)
+I (133) rpm_meter: Hall sensor initialized successfully
+I (143) rpm_meter: RPM meter ready. Monitoring rotation...
+I (2350) rpm_meter: RPM: 720.5 | Period: 83.3 ms | Samples: 5/5 | Total: 42
 ```
 
-## Troubleshooting
+When there is no rotation, you will periodically see:
 
-(For any technical queries, please open an [issue](https://github.com/espressif/esp-idf/issues) on GitHub. We will get back to you as soon as possible.)
+```bash
+I (5000) rpm_meter: RPM: -- | Waiting for rotation...
+```
+
+## Notes
+
+- Make sure the magnet passes close enough to the Hall sensor to generate a
+  clean digital pulse.
+- If the RPM readings are noisy, consider adjusting the minimum/maximum period
+  or increasing the averaging count.
+

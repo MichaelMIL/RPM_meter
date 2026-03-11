@@ -1,0 +1,2 @@
+source /Users/michaelneoja/Documents/github_private/RMP_meter/i2c_basic/build/bootloader/gdbinit/symbols
+source /Users/michaelneoja/Documents/github_private/RMP_meter/i2c_basic/build/bootloader/gdbinit/connect
